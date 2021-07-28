@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:twilio="http://www.mulesoft.org/schema/mule/twilio" xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/twilio http://www.mulesoft.org/schema/mule/twilio/current/mule-twilio.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="1d4f48d7-952b-4521-a6e0-f978a154ad87" >
+		<http:listener-connection host="${secure::http.host}" port="${secure::http.port}" />
+	</http:listener-config>
+<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="32bb6d53-6e6c-41ee-b543-6e1fe1e22cbf" >
+		<salesforce:basic-connection username="${secure::sfA.username}" password="${secure::sfA.password}" securityToken="${secure::sfA.token}" />
+	</salesforce:sfdc-config>
+	<salesforce:sfdc-config name="Salesforce_Config1" doc:name="Salesforce Config" doc:id="e4f046a8-2050-40be-ae90-7b7f7b3caffb" >
+		<salesforce:basic-connection username="${secure::sfB.username}" password="${secure::sfB.password}" securityToken="${secure::sfB.token}" />
+	</salesforce:sfdc-config>
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="3f170f2b-10ae-4000-886c-d1d8f96fa975" >
+		<email:smtp-connection port="${secure::email.port}" user="${secure::email.username}" password="${secure::email.password}" host="${secure::email.host}">
+			<email:properties >
+				<email:property key="mail.smtp.starttls.enable" value="true" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+	<twilio:config name="Twilio_Connector_Config" doc:name="Twilio Connector Config" doc:id="2cd6f9eb-ebff-48fa-b291-ddb14c89a901" >
+		<twilio:account-sid-auth-token-connection username="${secure::twilio.username}" password="${secure::twilio.password}"/>
+	</twilio:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="617c54af-d7c8-48e1-9b9b-e6898f637ce7" file="${env}.yaml" />
+	<global-property doc:name="Global Property" doc:id="6dc54a26-dcc0-4337-a09e-75cd5171ab90" name="env" value="dev" />
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="826a1576-1776-4eab-b896-dfe618a62094" file="${env}.yaml" key="${secure.key}" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<flow name="migrating-Account-data-from-salesforce-orgA-to-orgB" doc:id="2d508b7c-c534-4822-86a6-e91aa3168d68">
+		<scheduler doc:name="Scheduler" doc:id="c41326df-044b-4b35-be0a-384b8ddbfd6e">
+			<scheduling-strategy>
+				<fixed-frequency />
+			</scheduling-strategy>
+		</scheduler>
+		<os:retrieve doc:name="payload from Store" doc:id="83f2fbae-ac6d-410c-a14f-31c4668c43c9" key="myKey" target="myvar">
+			<os:default-value><![CDATA[#["2021-07-10T21:00:33.000Z"]]]></os:default-value>
+		</os:retrieve>
+		<salesforce:query doc:name="data from sf orgA" doc:id="a3d01a90-6b36-4070-9ec4-126badfaad26" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query><![CDATA[select AccountNumber, Name, Phone, Description, Industry, NumberOfEmployees, LastModifiedDate from Account
+where LastModifiedDate > :LastModifiedDate]]></salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[output application/java
+---
+{
+	LastModifiedDate : vars.myvar
+}]]]></salesforce:parameters>
+		
+</salesforce:query>
+		<os:store doc:name="maximum Last Modified Date from query" doc:id="41130a7a-4170-4d28-88db-20eb8690aa95" key="myKey" failOnNullValue="false">
+			<os:value><![CDATA[#[max(payload map $.LastModifiedDate)]]]></os:value>
+		</os:store>
+		<logger level="INFO" doc:name="Logger" doc:id="4ce71793-9bef-4c53-97d7-fcf5a34bee34" message="#[payload]"/>
+		<choice doc:name="Choice" doc:id="5d9a0df3-7226-45a7-8ce5-a554541091a8">
+			<when expression="#[sizeOf(payload) != 0]">
+				<flow-ref doc:name="business-logic" doc:id="0b60fe2a-7ad8-446b-8618-f8952575335c" name="business-logic"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="No payload" doc:id="e190b053-66d7-4ae3-bc2a-3df297410723" message="No Payload"/>
+			</otherwise>
+		</choice>
+	
+</flow>
+	<sub-flow name="business-logic" doc:id="b44b3832-aff9-45b5-b610-c7b6841761a0" >
+		<batch:job jobName="migrationflowBatch_Job" doc:id="637961f0-3dee-487b-af84-c5668e0df05a">
+			<batch:process-records>
+				<batch:step name="AggregateAndTransform-upsert-data-Batch_Step" doc:id="b0d9f1bd-9835-4a10-88d5-dde396935535">
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="77baba8d-ca15-4eed-888b-fa141ee4faad" size="5">
+						<ee:transform doc:name="preper data for upsert" doc:id="0408464d-870f-4a28-aba7-19154e83d8e2">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map {
+	Id: $.Id,
+	Phone: $.Phone,
+	AccountNumber: $.AccountNumber,
+	Description: $.Description,
+	Name: $.Name,
+	Industry: $.Industry,
+	NumberOfEmployees: $.NumberOfEmployees
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:upsert objectType="Account" doc:name="Upsert to sf orgB" doc:id="ed4a4dcc-1f41-44fc-aaf9-259bdbe1cd6c" config-ref="Salesforce_Config1" externalIdFieldName="Id" />
+						<logger level="INFO" doc:name="data is inserted to orgB" doc:id="045facea-f449-4749-95b9-4623ae35782f" message="data is inserted to orgB" />
+					</batch:aggregator>
+					<salesforce:query doc:name="Id from sf orgB" doc:id="05ed9c13-dcd4-49f2-9978-922478b69e85" config-ref="Salesforce_Config1" target="myID">
+			<salesforce:salesforce-query><![CDATA[select Id from Account where Name = ':name']]></salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[output application/java
+---
+{
+	name : payload.Name
+}]]]></salesforce:parameters>
+		</salesforce:query>
+					<ee:transform doc:name="aggregating data" doc:id="c4fe06fe-d004-40b9-986a-cc886293f4b6">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload ++ {Id: if(vars.myID != null) vars.myID[0].Id else null}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete>
+				<scatter-gather doc:name="Scatter-Gather" doc:id="02b0cc02-a4ff-43c6-ab0a-4bebc406281a">
+					<route>
+						<ee:transform doc:name="Prepare migration result email" doc:id="f53a7e66-bb3f-4668-927b-93faa6ceb542">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output text/plain
+---
+"Migration Report: \n"
+ 
+++ "\n Time [milliseconds]: " ++ payload.elapsedTimeInMillis!
+++ "\n Total Records: "	      ++ payload.totalRecords!
+++ "\n Successful Records: " ++ payload.successfulRecords!
+++ "\n Failed Records: "	++ payload.failedRecords!
+++ "\n Loaded Records: "	++ payload.loadedRecords!
+++ "\n Processed Records: " ++ payload.processedRecords!]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<email:send doc:name="Send email notification" doc:id="9d9e9376-80d0-4db8-94a7-ccce5d39cb50" config-ref="Email_SMTP" subject="salesforce data migration">
+							<email:to-addresses>
+								<email:to-address value="${secure::email.username}" />
+							</email:to-addresses>
+						</email:send>
+					</route>
+					<route>
+						<ee:transform doc:name="prepare data  for SMS" doc:id="a25caa27-34a2-4ad6-8de5-79f569e947d6">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/x-www-form-urlencoded
+---
+{
+	From: p("secure::twilio.from"),
+	To: p("secure::twilio.to"),
+	Body: "migration completed"
+} ]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<twilio:create20100401-accounts-messagesjson-by-account-sid doc:name="sending SMS" doc:id="ab016eae-a912-407f-84f8-b37120b226dd" config-ref="Twilio_Connector_Config" accountSid="${secure::twilio.username}" />
+					</route>
+					<route>
+						<logger level="INFO" doc:name="Migration process has finished!" doc:id="40951a0c-fffb-48a4-b16f-86729e4e0966" message="Migration process has finished!" />
+					</route>
+				</scatter-gather>
+			</batch:on-complete>
+		</batch:job>
+	</sub-flow>
+
+</mule>

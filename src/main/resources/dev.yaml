@@ -1,0 +1,25 @@
+http:
+   host: "![lVBcgbdpZGOhfHk3OiL1UA==]"
+   port: "![AzUfrtD+Tls=]"
+
+sfA:
+  username: "![uC0qf/jjZVhIRh7F9i8Y+iQV2Nw7fLjK]"
+  password: "![AmuvSOG+gdcrznmrtBRV8eS6rnxtQXOu]"
+  token: "![6BP4nCVb0F9PTStzUipsIgVKbtqaIGw3V/+TnkGRTt8=]"
+
+sfB:
+  username: "![uWlo8SjYoAGP9B7lXol1SaEv/9hMaRWe]"
+  password: "![AmuvSOG+gdcrznmrtBRV8eS6rnxtQXOu]"
+  token: "![AyUcRiX42iL5NWj1M2Qo/L5uRQ2O1CzgOv4M0nQpnyU=]"
+
+email:
+  host: "![bbDQjO0uWsKrtbn+7tCPRQ==]"
+  port: "![VW0QG3jGSok=]"
+  username: "![uC0qf/jjZVhIRh7F9i8Y+iQV2Nw7fLjK]"
+  password: "![65SbsUTTI03VMyw/QuBVWg==]"
+
+twilio:
+    username: "![FZAxFyV2WwF5/B0l9kmBGxFN09YOPcsNTOjZoI6Nej30Dsa9jEm6ng==]"
+    password: "![LrLW3YKW0XwnPZIHapMnklSWPuohuRQHaZnxAI6OzOV7kYyECmIUtg==]"
+    from: "![RacC5rXeiksfst6IJDnVSA==]"
+    to: "![G85KVM4CgMok+pCuA1nDZA==]"
